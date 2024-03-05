@@ -1,29 +1,51 @@
-import { createSlice, nanoid } from '@reduxjs/toolkit';
-import { persistReducer } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
+import { createSlice } from '@reduxjs/toolkit';
+import { addContact, deleteContact, fetchContacts } from './operations';
 
-const phoneContacts = {
+const initialState = {
   items: [],
+  isLoading: false,
+  error: null,
 };
 
-const contactsSlice = createSlice({
+const setLoading = state => {
+  state.isLoading = true;
+};
+
+const errorHandler = (state, action) => {
+  state.error = action.payload;
+  state.isLoading = false;
+};
+
+const unsetErrorAndLoading = (state, action) => {
+  state.error = null;
+  state.isLoading = false;
+};
+
+export const contactsSlice = createSlice({
   name: 'contacts',
-  initialState: phoneContacts,
-  reducers: {
-    addContact(state, action) {
-      state.items.push({ ...action.payload, id: nanoid() });
-    },
-    removeContact(state, action) {
-      state.items = state.items.filter(
-        contact => contact.id !== action.payload
-      );
-    },
+
+  initialState,
+
+  extraReducers: builder => {
+    builder
+      .addCase(fetchContacts.pending, setLoading)
+      .addCase(fetchContacts.rejected, errorHandler)
+      .addCase(fetchContacts.fulfilled, (state, { payload }) => {
+        state.items = payload;
+        unsetErrorAndLoading(state);
+      })
+      .addCase(addContact.pending, setLoading)
+      .addCase(addContact.rejected, errorHandler)
+      .addCase(addContact.fulfilled, (state, { payload }) => {
+        state.items.push(payload);
+        unsetErrorAndLoading(state);
+      })
+      .addCase(deleteContact.pending, setLoading)
+      .addCase(deleteContact.rejected, errorHandler)
+      .addCase(deleteContact.fulfilled, (state, { payload }) => {
+        state.items = state.items.filter(({ id }) => id !== payload.id);
+        unsetErrorAndLoading(state);
+      });
   },
 });
-
-export const { addContact, removeContact } = contactsSlice.actions;
-
-export const contactsReducer = persistReducer(
-  { key: 'contacts', storage },
-  contactsSlice.reducer
-);
+export const contactsReducer = contactsSlice.reducer;
